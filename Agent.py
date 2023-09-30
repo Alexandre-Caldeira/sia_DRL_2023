@@ -188,7 +188,8 @@ class AgentClass():
         #4
         # max_iterations 300 - 1200 (1min - 4) 
         # media = 1500/2 = 750 iteracoes 
-        r4= -number_iterations*(2/75)
+        # 3min = colisao se -200 = 900*x
+        r4= -number_iterations*(2/9)
         #print(r1,r2,r3,r4)
 
         r5=0
@@ -199,7 +200,7 @@ class AgentClass():
         else:
             r5=10
 
-        r1 = 10*abs(np.linalg.norm([-4-self.goal[0],
+        r1 = 50*abs(np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])\
              - new_distance)/np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])
