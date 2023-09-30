@@ -185,7 +185,7 @@ def evaluate(Qmodel, horizon, repeats):
 
             perform += reward
     Qmodel.train()
-    return perform/repeats
+    return perform/repeats, new_distance, r1, r4 
 
 
 def update_parameters(current_model, target_model):
@@ -194,8 +194,8 @@ def update_parameters(current_model, target_model):
 
 def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episodes=20, eps=1, eps_decay=0.995,
          eps_min=0.01, update_step=10, batch_size=64, update_repeats=50, num_episodes=3000, max_memory_size=50000,
-         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=10000,
-         theta_atual:int= 36,laser_scan_state_type_atual:str = 'min'):
+         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=200000,
+         theta_atual:int= 36,laser_scan_state_type_atual:str = 'min',checkpoint_inter=1000):
     """
     :param gamma: reward discount factor
     :param lr: learning rate for the Q-Network
@@ -294,7 +294,8 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
             state  = Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             #print(state)
-            reward = Agent.get_reward(number_iterations=i)
+            #reward, _, _, _ = Agent.get_reward(number_iterations=i)
+            reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
             done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
@@ -310,6 +311,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             if i > horizon:
                 done = True
 
+            if i%10==0:print('i: '+str(i)+' \tr:'+str([reward, new_distance, r1, r4]))
             # render the environment if render == True
             #if render and episode % render_step == 0:
             #    env.render()
@@ -335,11 +337,12 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         eps = max(eps*eps_decay, eps_min)
 
         # checkpoints @ every 3k episodes
-        if episode % 1000 ==0:
+        if episode % checkpoint_inter ==0:
 
             str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
-            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-
+            #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            path ='./checkpoints/'+'wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            
             if not os.path.exists(path):
                 os.makedirs(path)
 
@@ -381,13 +384,13 @@ if __name__ == '__main__':
     hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
 
     Agent.get_state_discrete()
-    Agent.get_reward()
+    Agent.get_reward(1)
     rospy.sleep(1)
     Agent.get_state_discrete()
-    Agent.get_reward()
+    Agent.get_reward(1)
     rospy.sleep(1)
     Agent.get_state_discrete()
-    Agent.get_reward()
+    Agent.get_reward(1)
     reset_simulation()
 
     time.sleep(1)
@@ -396,7 +399,9 @@ if __name__ == '__main__':
     else:
         rospy.loginfo('States not received!!')
 
-    max_episodes=10000
+    max_episodes=5000
+    checkpoint_inter= 100
+    max_iterations = 1200
     # action_time=0.2
     # memory_capacity=15000
 
@@ -419,8 +424,9 @@ if __name__ == '__main__':
                     18.1:10+1
                 }[theta_atual]-1
 
-            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-
+            #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            path ='./checkpoints/'+'wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            
             if not os.path.exists(path):
                 os.makedirs(path)
 
@@ -433,6 +439,8 @@ if __name__ == '__main__':
                 }[theta_atual],
                 theta_atual = theta_atual,
                 laser_scan_state_type_atual = laser_scan_state_type_atual,
+                checkpoint_inter=checkpoint_inter,
+                horizon= max_iterations,
                 num_episodes=max_episodes, eps = 0.8, eps_decay=0.9995) #visualize eps decay=> geogebra 0.9995^(1000*x)
 
 

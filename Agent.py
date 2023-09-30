@@ -186,7 +186,9 @@ class AgentClass():
             r3=Kgoal
 
         #4
-        r4=Ktime*number_iterations/10
+        # max_iterations 300 - 1200 (1min - 4) 
+        # media = 1500/2 = 750 iteracoes 
+        r4= -number_iterations*(2/75)
         #print(r1,r2,r3,r4)
 
         r5=0
@@ -206,7 +208,7 @@ class AgentClass():
         r3=0
         if new_distance<0.3:
             #close enough
-            reward=Kgoal
+            reward=r1+r4+Kgoal
 
         return reward, new_distance, r1, r4
 
