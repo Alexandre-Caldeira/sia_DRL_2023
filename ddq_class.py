@@ -177,7 +177,7 @@ def evaluate(Qmodel, horizon, repeats):
 
             state=Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             reward=Agent.get_reward()
-            done,_ = Agent.is_done(i)
+            done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
             if i > horizon:
                 done = True
@@ -194,7 +194,7 @@ def update_parameters(current_model, target_model):
 
 def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episodes=20, eps=1, eps_decay=0.995,
          eps_min=0.01, update_step=10, batch_size=64, update_repeats=50, num_episodes=3000, max_memory_size=50000,
-         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=np.inf,
+         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=10000,
          theta_atual:int= 36,laser_scan_state_type_atual:str = 'min'):
     """
     :param gamma: reward discount factor
@@ -262,9 +262,10 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             print("lr: ", scheduler.get_lr()[0])
             print("eps: ", eps)
 
-            # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}}
+            # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
             hist_dict['rewards'][episode+1] = performance[-1][1]
             hist_dict['rates'][episode+1] = [eps, scheduler.get_lr()[0]]
+            hist_dict['epresult'][episode+1] = [done, status_done]
 
         reset_simulation() #env.reset()
         Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
@@ -293,9 +294,9 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             state  = Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             #print(state)
             reward = Agent.get_reward()
-            done,_ = Agent.is_done(i)
+            done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
-            # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}}
+            # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
             if i==1:
                 hist_dict['pos'][episode+1] = [Agent.Pos]
                 hist_dict['scan'][episode+1] = [Agent.laser_scan]
@@ -314,6 +315,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
             # save state, action, reward sequence
             memory.update(state, action, reward, done)
+        
 
         if episode >= min_episodes and episode % update_step == 0:
             for _ in range(update_repeats):
@@ -332,7 +334,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         eps = max(eps*eps_decay, eps_min)
 
         # checkpoints @ every 3k episodes
-        if episode % 3000 ==0:
+        if episode % 1000 ==0:
 
             str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
             path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
@@ -375,7 +377,7 @@ if __name__ == '__main__':
     #Initialize relevant objects
     Agent=AgentClass()
     Com=CommunicationP3DX(Agent)
-    hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}}
+    hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
 
     Agent.get_state_discrete()
     Agent.get_reward()
