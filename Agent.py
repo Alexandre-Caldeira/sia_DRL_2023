@@ -199,7 +199,7 @@ class AgentClass():
         else:
             r5=10
 
-        r1 = 100*abs(np.linalg.norm([-4-self.goal[0],
+        r1 = 10*abs(np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])\
              - new_distance)/np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])
