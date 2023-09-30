@@ -1,0 +1,47 @@
+
+
+
+import numpy as np
+from operator import add
+import time
+import random
+import rospy
+import shelve
+import os
+
+
+#from paramiko import Agent
+import rospy
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from gazebo_msgs.msg import ModelState
+from sensor_msgs.msg import LaserScan
+import time
+from Agent import AgentClass
+import numpy as np
+from CommunicationP3DX import CommunicationP3DX
+from Agent import AgentClass
+import subprocess
+from gazebo_msgs.srv import SpawnModel
+from geometry_msgs.msg import Pose
+from gazebo_msgs.srv import SpawnModel,SpawnModelRequest
+
+from gazebo_msgs.srv import DeleteModel
+import timeit
+import shelve
+import matplotlib.pyplot as plt
+
+d = shelve.open('/home/nero-ia/workspace/QLearningNavigation/QLearningNavigation/ShelveData/shelve.out')
+         # true if the key exists
+klist = list(d.keys())
+#print(klist)
+hm=d['QtableHeat']
+vs=np.zeros(len(hm.keys()))
+c=0
+for keys in hm:
+    vs[c]=sum(hm[keys])
+    c+=1
+print(len(hm.keys()))
+a=np.arange(len(hm.keys()))
+plt.bar(a,vs)
+plt.show()

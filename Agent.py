@@ -11,7 +11,8 @@ from sensor_msgs.msg import LaserScan
 import time
 import numpy as np
 from operator import add
-
+from scipy import stats
+import statistics
 
 class AgentClass():
     def __init__(self):
@@ -28,8 +29,8 @@ class AgentClass():
 
 
 
-      
-    def get_scan_sections(self,theta=36,angle=180):
+
+    def get_scan_sections(self,theta=36,angle=180, laser_scan_state_type:str='min'):
         #Separates the laser scans in sections of theta degrees
         #angle is the angle range of scans
         # Currently using 180
@@ -56,16 +57,25 @@ class AgentClass():
             #laser_sections.append(np.mean(laser_scan[i:(i+step)]))
 
             # Getting n-st lower item
-            laser_sections.append(self.n_min(laser_scan[i:(i+step)],0.2))
-        
+            if laser_scan_state_type =='min':
+                laser_sections.append(self.n_min(laser_scan[i:(i+step)],0.2))
+            elif laser_scan_state_type =='mean':
+                laser_sections.append(np.mean(laser_scan[i:(i+step)]))
+            elif laser_scan_state_type =='mode':
+                laser_sections.append(statistics.mode(laser_scan[i:(i+step)]))
+
         return laser_sections
-    
-    def get_state_discrete(self,cl=0.5,md=1.3):
+
+
+    def get_state_discrete(self,cl=0.5,md=1.3, laser_scan_state_type:str='min', theta:int = 36):
         #Currently state is Section readings+robot coordinates+goal coordinates
         #Gathers information relevant to form the state of the robot
         #The state is treated as 4 discrete groups: very close(3), close(2),ok(1), safe(4)
-        laser_sections=np.array(self.get_scan_sections())
-        
+        # laser_sections=np.array(self.get_scan_sections())
+
+        laser_sections=np.array(self.get_scan_sections(laser_scan_state_type= laser_scan_state_type,
+                                                       theta= theta))
+
         #treating for discrete groups:
         laser_sections_cl=laser_sections<cl
         laser_sections_cl=laser_sections_cl.astype(int)
@@ -73,7 +83,7 @@ class AgentClass():
         laser_sections_md=laser_sections_md.astype(int)
         #laser_sections_saf=laser_sections>=md
         #laser_sections_saf=laser_sections_saf.astype(int)
-        
+
         laser_sections=laser_sections_cl+laser_sections_md
         #Pegar região do destino
         agent_coord=[self.Pos[0],self.Pos[1]]#xy coordinates
@@ -99,17 +109,17 @@ class AgentClass():
         elif angle>np.deg2rad(54) and angle<=np.deg2rad(90):
             angle=4
         elif angle<=-np.deg2rad(90) or angle>=np.deg2rad(90):
-            angle=5        
+            angle=5
         #updates past state before updating the current state
         self.past_state=self.state
-        #Concatenate all informations relevant to the state        
+        #Concatenate all informations relevant to the state
         self.state=list(laser_sections)
         self.state.append(angle)
-        
+
         #self.state=''.join(map(str,self.state))
         return self.state
 
-        
+
     def get_reward(self,Kclose=-0.3,Kobs=-1,Kgoal=20,Ktime=-0.1,very_close=0.8,close=1.5,dist_crash=0.30):
         #Reward Structure
         #1:reward for getting closer to goal(Kcloser)
@@ -119,13 +129,13 @@ class AgentClass():
         #1
         r1=[]
         #print(np.array((self.past_state[-4:-3])))
-        
+
         # new_distance=((self.state[-4]-self.goal[0])**2+
         #               (self.state[-3]-self.goal[1])**2)**(0.5)
         # print(len(self.state),self.state,(self.state))
         # print()
         # print(len(self.goal),self.goal)
-        
+
         new_distance=np.linalg.norm([self.Pos[0]-self.goal[0],
                                      self.Pos[1]-self.goal[1]])
         # if new_distance<old_distance:
@@ -134,7 +144,7 @@ class AgentClass():
         # else:
         #     #no penalty for getting away. This can be changed
         #     r1=-0.5*Kclose
-        #r1=Kclose*new_distance/(np.linalg.norm([self.goal]))    
+        #r1=Kclose*new_distance/(np.linalg.norm([self.goal]))
         #2
         r2=0
         for i in range(0,len(self.state)-1):
@@ -167,34 +177,40 @@ class AgentClass():
         #             r2=r2+3*Kobs*3
         #         elif int(self.state[i])==0:
         #             r2=r2+Kobs*3
-        
+
 
         #3
         r3=0
         if new_distance<0.3:
             #close enough
             r3=Kgoal
-            
+
         #4
         r4=Ktime
         #print(r1,r2,r3,r4)
 
         r5=0
         #print(self.state,'sda')
-        if len(self.state)>=5 and int(self.state[5])!=2:
-            r5=-3
+        if len(self.state)>5:
+            if int(self.state[5])!=2:
+                r5=-3
         else:
             r5=10
-        
-        reward=r2+r5
+
+        r1 = 100*abs(np.linalg.norm([-4-self.goal[0],
+                             2-self.goal[1]])\
+             - new_distance)/np.linalg.norm([-4-self.goal[0],
+                             2-self.goal[1]])
+
+        reward=r2+r5+r1
         r3=0
         if new_distance<0.3:
             #close enough
             reward=Kgoal
-            
+
         return reward
-    
- 
+
+
     def get_euler_from_quaternion(self,x, y, z, w):
             """
             Convert a quaternion into euler angles (roll, pitch, yaw)
@@ -205,26 +221,26 @@ class AgentClass():
             t0 = +2.0 * (w * x + y * z)
             t1 = +1.0 - 2.0 * (x * x + y * y)
             roll_x = math.atan2(t0, t1)
-        
+
             t2 = +2.0 * (w * y - z * x)
             t2 = +1.0 if t2 > +1.0 else t2
             t2 = -1.0 if t2 < -1.0 else t2
             pitch_y = math.asin(t2)
-        
+
             t3 = +2.0 * (w * z + x * y)
             t4 = +1.0 - 2.0 * (y * y + z * z)
             yaw_z = math.atan2(t3, t4)
-        
+
             return roll_x, pitch_y, yaw_z # in radians
     def get_quaternion_from_euler(self,roll, pitch, yaw):
         """
         Convert an Euler angle to a quaternion.
-        
+
         Input
             :param roll: The roll (rotation around x-axis) angle in radians.
             :param pitch: The pitch (rotation around y-axis) angle in radians.
             :param yaw: The yaw (rotation around z-axis) angle in radians.
-        
+
         Output
             :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
         """
@@ -232,12 +248,12 @@ class AgentClass():
         qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
         qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
         qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        
+
         return [qx, qy, qz, qw]
     def is_done(self,number_iterations=-1,max_iterations=200,reach_dist=0.3):
         done=False
-        status=-1 # -1 for not done, 0 for crash, 1 for goal 2 for time 
-        
+        status=-1 # -1 for not done, 0 for crash, 1 for goal 2 for time
+
         new_distance=((self.Pos[0]-self.goal[0])**2+
                       (self.Pos[1]-self.goal[1])**2)**(0.5)
         if new_distance<reach_dist:
@@ -245,7 +261,7 @@ class AgentClass():
             status=1
         if len(self.laser_scan)>0:# avoiding the first check
             if min(self.laser_scan)<0.2:
-                #Crash ! 
+                #Crash !
                 done = True
                 status=0
         if number_iterations>max_iterations:
@@ -255,7 +271,7 @@ class AgentClass():
             return done
         else:
             return done,status
-            
+
 
 
 

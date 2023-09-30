@@ -15,7 +15,7 @@ from Agent import AgentClass
 import numpy as np
 
 class CommunicationP3DX():
-    
+
     def __init__(self,A=None):
         self.freq=10#frequency in Hz
         self.P3DX_vel_publisher = rospy.Publisher('/p3dx/cmd_vel', Twist, queue_size=1)
@@ -36,23 +36,23 @@ class CommunicationP3DX():
         if (type(A) is AgentClass):
             self.Ag=A
         #A.__init__(self)
-        
-        
+
+
         #rospy.on_shutdown(self.shutdownhook)
         #Custom action
-    
+
     def odom_callback(self,msg):
        self.odom_full=msg
        self.odom=[msg.pose.pose.position.x ,msg.pose.pose.position.y, msg.pose.pose.position.z,
        msg.pose.pose.orientation.x , msg.pose.pose.orientation.y,
        msg.pose.pose.orientation.z , msg.pose.pose.orientation.w]
-       
-       
+
+
        try:
             if (type(self.Ag) is AgentClass):
-                
+
                 eulerOri=self.Ag.get_euler_from_quaternion(msg.pose.pose.orientation.x , msg.pose.pose.orientation.y,msg.pose.pose.orientation.z , msg.pose.pose.orientation.w)
-                
+
                 self.Ag.Pos=[self.odom[0],self.odom[1],self.odom[2],eulerOri[0],eulerOri[1],eulerOri[2]]
                 self.Ag.Vel=[msg.twist.twist.linear.x ,msg.twist.twist.linear.y, msg.twist.twist.linear.z,
             msg.twist.twist.angular.x , msg.twist.twist.angular.y,
@@ -63,11 +63,11 @@ class CommunicationP3DX():
 
     def laser_callback(self,msg):
         #This function is executed every time a message is published in the topic /p3dx/laser/scan
-        
+
         #So this function should update the parameter self.laser_scan to the newest laser scan
         self.laser_scan_full=msg
         self.laser_scan=msg.ranges
-        
+
         try:
             if (type(self.Ag) is AgentClass):
                 self.Ag.laser_scan=msg.ranges
@@ -95,13 +95,13 @@ class CommunicationP3DX():
             if connections > 0:
                 self.P3DX_state_publisher.publish(self.StateMsg)
                 rospy.logdebug("State changed")
-                rospy.sleep(0.1)
+                rospy.sleep(0.2)
                 break
             else:
                 self.rate.sleep()
-        
-    
-   
+
+
+
     def custom_action(self):
         """
         This is because publishing in topics sometimes fails the first time you publish.
@@ -131,10 +131,10 @@ class CommunicationP3DX():
                 self.P3DX_vel_publisher.publish(self.cmd)
                 rospy.logdebug("Forward Action Published")
                 #rospy.sleep(0.1)
-                time.sleep(0.1) 
+                time.sleep(0.2)
                 break
             else:
-                self.rate.sleep()    
+                self.rate.sleep()
     #Move Left
     def action_left(self):
         """
@@ -149,10 +149,10 @@ class CommunicationP3DX():
             if connections > 0:
                 self.P3DX_vel_publisher.publish(self.cmd)
                 rospy.logdebug("Left Action Published")
-                time.sleep(0.1) 
+                time.sleep(0.2)
                 break
             else:
-                self.rate.sleep()  
+                self.rate.sleep()
 
     #Move Right
     def action_right(self):
@@ -170,16 +170,16 @@ class CommunicationP3DX():
             if connections > 0:
                 self.P3DX_vel_publisher.publish(self.cmd)
                 rospy.logdebug("Right Action Published")
-                time.sleep(0.1) 
+                time.sleep(0.2)
                 break
             else:
                 self.rate.sleep()
-    
+
     def shutdownhook(self):
         #works better than rospy.is_shut_down()
         self.stop_P3DX()
         self.ctrl_c = True
-    
+
     def stop_P3DX(self):
         rospy.logdebug("shutdown time! Stop the robot")
         self.cmd.linear.x = 0.0

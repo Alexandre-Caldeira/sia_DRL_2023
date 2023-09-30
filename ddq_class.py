@@ -21,42 +21,11 @@ from Agent import AgentClass
 from std_srvs.srv import Empty
 import rospy
 import time
+import shelve
+import os
+from datetime import datetime
 
-rospy.init_node('learning_loop')
-rospy.wait_for_service('/gazebo/reset_world')
-pause_physics_client=rospy.ServiceProxy('/gazebo/pause_physics',Empty)
-unpause_physics_client=rospy.ServiceProxy('/gazebo/unpause_physics',Empty)
-reset_simulation = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
-
-#Placeholder functions for script without NN
-actions_linear=[0, 0.2, 0.6] # random linear speed for sampling
-actions_angular=[0, 0.2, 0.6] # random angular speed for sampling 
-goal_zones_x=[(0,2),(3,4.8),(5,7),(5,7)]
-goal_zones_y=[(2,6),(3,8),(0,4),(6.5,9)]
-#Initialize relevant objects
-Agent=AgentClass()
-Com=CommunicationP3DX(Agent)
-
-
-Agent.get_state_discrete()
-Agent.get_reward()
-rospy.sleep(1)
-Agent.get_state_discrete()
-Agent.get_reward()
-rospy.sleep(1)
-Agent.get_state_discrete()
-Agent.get_reward()
-reset_simulation()
-
-time.sleep(1)
-if len(Agent.state)>0 and len(Agent.past_state)>0:
-    rospy.loginfo('States Initialized Succesfuly')
-else:
-    rospy.loginfo('States not received!!')
-
-max_episodes=20000
-action_time=0.2
-memory_capacity=15000
+str_hora_inicio_treino = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
 
 """
 The Q-Network has as input a state s and outputs the state-action values q(s,a_1), ..., q(s,a_n) for all n actions.
@@ -104,7 +73,7 @@ class QNetworkCNN(nn.Module):
 
 
 """
-memory to save the state, action, reward sequence from the current episode. 
+memory to save the state, action, reward sequence from the current episode.
 """
 class Memory:
     def __init__(self, len):
@@ -183,9 +152,9 @@ def evaluate(Qmodel, horizon, repeats):
     Qmodel.eval()
     perform = 0
     for _ in range(repeats):
-         
+
         #env.reset()
-        state = Agent.get_state_discrete()
+        state = Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
         reset_simulation()
 
         done = False
@@ -197,7 +166,7 @@ def evaluate(Qmodel, horizon, repeats):
             with torch.no_grad():
                 values = Qmodel(state)
             action = np.argmax(values.cpu().numpy())
-            
+
             #state, reward, done, _ = env.step(action)
             if action==0:
                 Com.action_forward()
@@ -205,8 +174,8 @@ def evaluate(Qmodel, horizon, repeats):
                 Com.action_right()
             else:
                 Com.action_left()
-            
-            state=Agent.get_state_discrete()
+
+            state=Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             reward=Agent.get_reward()
             done,_ = Agent.is_done(i)
 
@@ -223,9 +192,10 @@ def update_parameters(current_model, target_model):
     target_model.load_state_dict(current_model.state_dict())
 
 
-def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episodes=20, eps=1, eps_decay=0.995, 
+def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episodes=20, eps=1, eps_decay=0.995,
          eps_min=0.01, update_step=10, batch_size=64, update_repeats=50, num_episodes=3000, max_memory_size=50000,
-         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=np.inf):
+         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=np.inf,
+         theta_atual:int= 36,laser_scan_state_type_atual:str = 'min'):
     """
     :param gamma: reward discount factor
     :param lr: learning rate for the Q-Network
@@ -274,7 +244,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
     # https://douglasrizzo.com.br/step-decay-lr/
     initial_lr = lr
     final_lr = lr*1e-3
-    n_updates = num_episodes
+    n_updates = num_episodes*0.7
     lr_gamma =  (final_lr / initial_lr)**(1 / n_updates) # gamma
 
     optimizer = torch.optim.Adam(Q_1.parameters(), lr=lr)
@@ -292,8 +262,12 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             print("lr: ", scheduler.get_lr()[0])
             print("eps: ", eps)
 
+            # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}}
+            hist_dict['rewards'][episode+1] = performance[-1][1]
+            hist_dict['rates'][episode+1] = [eps, scheduler.get_lr()[0]]
+
         reset_simulation() #env.reset()
-        Agent.get_state_discrete()
+        Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
         state = Agent.state
         #print(state)
         memory.state.append(state)
@@ -307,7 +281,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
             #TODO take action here, calculate rewards, check if done, refresh state variable
             #state, reward, done, _ = env.step(action)
-            
+
             if action==0:
                 Com.action_forward()
             elif action==1:
@@ -315,10 +289,21 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             else:
                 Com.action_left()
 
-            
-            state  = Agent.get_state_discrete()
+
+            state  = Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
+            #print(state)
             reward = Agent.get_reward()
             done,_ = Agent.is_done(i)
+
+            # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}}
+            if i==1:
+                hist_dict['pos'][episode+1] = [Agent.Pos]
+                hist_dict['scan'][episode+1] = [Agent.laser_scan]
+                hist_dict['state'][episode+1] = [state]
+            else:
+                hist_dict['pos'][episode+1].append(Agent.Pos)
+                hist_dict['scan'][episode+1].append(Agent.laser_scan)
+                hist_dict['state'][episode+1].append(state)
 
             if i > horizon:
                 done = True
@@ -332,7 +317,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
         if episode >= min_episodes and episode % update_step == 0:
             for _ in range(update_repeats):
-                
+
                 pause_physics_client() # pause simulation to train
                 train(batch_size, Q_1, Q_2, optimizer, memory, gamma)
                 unpause_physics_client() # unpause simulation after training
@@ -340,26 +325,130 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
             # transfer new parameter from Q_1 to Q_2
             update_parameters(Q_1, Q_2)
-            print(Agent.goal)
+            # print(Agent.goal)
 
         # update learning rate and eps
         scheduler.step()
         eps = max(eps*eps_decay, eps_min)
 
+        # checkpoints @ every 3k episodes
+        if episode % 3000 ==0:
+
+            str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
+            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+            filename=path+'/wsh_'+str_hora_agr+'.out'
+            my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
+            for key in dir():
+                try:
+                    my_shelf[key] = globals()[key]
+                except:
+                    #
+                    # __builtins__, my_shelf, and imported modules can not be shelved.
+                    #
+                    # print('ERROR shelving: {0}'.format(key))
+                    continue
+            my_shelf.close()
+            print('checkpoint successfull @'+str_hora_agr)
+
+
+
     return Q_1, performance
 
-import shelve
 if __name__ == '__main__':
-    Q_1, performance = main(state_space_size=6, num_episodes=max_episodes, eps_decay=0.9995) #visualize eps decay=> geogebra 0.9995^(1000*x)
 
-    filename='./checkpoints/workspace_28092023_0923.out'
-    my_shelf = shelve.open(filename,'n') # 'n' for new
-    for key in dir():
-        try:
-            my_shelf[key] = globals()[key]
-        except TypeError:
-            #
-            # __builtins__, my_shelf, and imported modules can not be shelved.
-            #
-            print('ERROR shelving: {0}'.format(key))
-    my_shelf.close()
+
+    rospy.init_node('learning_loop')
+    rospy.wait_for_service('/gazebo/reset_world')
+    pause_physics_client=rospy.ServiceProxy('/gazebo/pause_physics',Empty)
+    unpause_physics_client=rospy.ServiceProxy('/gazebo/unpause_physics',Empty)
+    reset_simulation = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
+
+    #Placeholder functions for script without NN
+    actions_linear=[0, 0.2, 0.6] # random linear speed for sampling
+    actions_angular=[0, 0.2, 0.6] # random angular speed for sampling
+    goal_zones_x=[(0,2),(3,4.8),(5,7),(5,7)]
+    goal_zones_y=[(2,6),(3,8),(0,4),(6.5,9)]
+    #Initialize relevant objects
+    Agent=AgentClass()
+    Com=CommunicationP3DX(Agent)
+    hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}}
+
+    Agent.get_state_discrete()
+    Agent.get_reward()
+    rospy.sleep(1)
+    Agent.get_state_discrete()
+    Agent.get_reward()
+    rospy.sleep(1)
+    Agent.get_state_discrete()
+    Agent.get_reward()
+    reset_simulation()
+
+    time.sleep(1)
+    if len(Agent.state)>0 and len(Agent.past_state)>0:
+        rospy.loginfo('States Initialized Succesfuly')
+    else:
+        rospy.loginfo('States not received!!')
+
+    max_episodes=10000
+    # action_time=0.2
+    # memory_capacity=15000
+
+    for laser_scan_state_type_atual in ['mean', 'mode','min']:
+        for theta_atual in [46,36.1]:
+            print('-'*150)
+            print('''
+                Started training for:
+                  \tlaser_scan_state_type_atual = {laser_scan_state_type_atual}
+                  \ttheta_atual = {theta_atual}'
+            '''.format(laser_scan_state_type_atual=laser_scan_state_type_atual,theta_atual=theta_atual))
+
+            theta_atual = 46 # 46, 36.1, 30.1, 18.1
+            laser_scan_state_type_atual = 'mean' # min, mean, mode
+
+            n_sectors ={
+                    46:4+1,
+                    36.1:5+1,
+                    30.1:6+1,
+                    18.1:10+1
+                }[theta_atual]-1
+
+            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+            Q_1, performance = main(
+                state_space_size={
+                    46:4+1,
+                    36.1:5+1,
+                    30.1:6+1,
+                    18.1:10+1
+                }[theta_atual],
+                theta_atual = theta_atual,
+                laser_scan_state_type_atual = laser_scan_state_type_atual,
+                num_episodes=max_episodes, eps = 0.8, eps_decay=0.9995) #visualize eps decay=> geogebra 0.9995^(1000*x)
+
+
+
+
+            str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
+            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+            filename=path+'/wsh_'+str_hora_agr+'.out'
+            my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
+            for key in dir():
+                try:
+                    my_shelf[key] = globals()[key]
+                except TypeError:
+                    #
+                    # __builtins__, my_shelf, and imported modules can not be shelved.
+                    #
+                    print('ERROR shelving: {0}'.format(key))
+            my_shelf.close()
