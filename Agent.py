@@ -120,7 +120,7 @@ class AgentClass():
         return self.state
 
 
-    def get_reward(self,Kclose=-0.3,Kobs=-1,Kgoal=20,Ktime=-0.1,very_close=0.8,close=1.5,dist_crash=0.30):
+    def get_reward(self,number_iterations,Kclose=-0.3,Kobs=-1,Kgoal=20,Ktime=-0.1,very_close=0.8,close=1.5,dist_crash=0.30):
         #Reward Structure
         #1:reward for getting closer to goal(Kcloser)
         #2:penalty for close to obstacle(Kobs)
@@ -186,7 +186,7 @@ class AgentClass():
             r3=Kgoal
 
         #4
-        r4=Ktime
+        r4=Ktime*number_iterations/10
         #print(r1,r2,r3,r4)
 
         r5=0
@@ -202,13 +202,13 @@ class AgentClass():
              - new_distance)/np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])
 
-        reward=r2+r5+r1
+        reward=r2+r5+r1+r4
         r3=0
         if new_distance<0.3:
             #close enough
             reward=Kgoal
 
-        return reward
+        return reward, new_distance, r1, r4
 
 
     def get_euler_from_quaternion(self,x, y, z, w):

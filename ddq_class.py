@@ -176,7 +176,7 @@ def evaluate(Qmodel, horizon, repeats):
                 Com.action_left()
 
             state=Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
-            reward=Agent.get_reward()
+            reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
             done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
             if i > horizon:
@@ -256,14 +256,15 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
     for episode in range(num_episodes):
         # display the performance
         if (episode % measure_step == 0) and episode >= min_episodes:
-            performance.append([episode, evaluate(Q_1, horizon, measure_repeats)])
+            reward_eval, new_distance, r1, r4 = evaluate(Q_1, horizon, measure_repeats)
+            performance.append([episode, reward_eval])
             print("Episode: ", episode)
             print("rewards: ", performance[-1][1])
             print("lr: ", scheduler.get_lr()[0])
             print("eps: ", eps)
 
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
-            hist_dict['rewards'][episode+1] = performance[-1][1]
+            hist_dict['rewards'][episode+1] = [performance[-1][1], new_distance, r1, r4]
             hist_dict['rates'][episode+1] = [eps, scheduler.get_lr()[0]]
             hist_dict['epresult'][episode+1] = [done, status_done]
 
@@ -293,7 +294,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
             state  = Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             #print(state)
-            reward = Agent.get_reward()
+            reward = Agent.get_reward(number_iterations=i)
             done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
