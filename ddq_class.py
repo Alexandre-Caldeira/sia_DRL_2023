@@ -311,7 +311,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             if i > horizon:
                 done = True
 
-            if i%10==0:print('i: '+str(i)+' \tr:'+str([reward, new_distance, r1, r4]))
+            if i%500==0:print('i: '+str(i)+' \tr:'+str([reward, new_distance, r1, r4]))
             # render the environment if render == True
             #if render and episode % render_step == 0:
             #    env.render()
@@ -400,13 +400,13 @@ if __name__ == '__main__':
         rospy.loginfo('States not received!!')
 
     max_episodes=5000
-    checkpoint_inter= 100
+    checkpoint_inter= 500
     max_iterations = 1200
     # action_time=0.2
     # memory_capacity=15000
 
     for laser_scan_state_type_atual in ['mean', 'mode','min']:
-        for theta_atual in [46,36.1]:
+        for theta_atual in [36.1]:
             print('-'*150)
             print('''
                 Started training for:
