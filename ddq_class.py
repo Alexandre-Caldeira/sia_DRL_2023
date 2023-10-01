@@ -349,8 +349,8 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         if episode % checkpoint_inter ==0:
 
             str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
-            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-            #path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
 
             if not os.path.exists(path):
                 os.makedirs(path)
@@ -419,13 +419,7 @@ if __name__ == '__main__':
        # ,(18.1,'mean'),(18.1,'min'),(18.1,'mode')]
 
     for theta_atual,laser_scan_state_type_atual in [
-        (46,'min')
-        ,(30.1,'mean')
-        ,(30.1,'min')
-        ,(18.1,'mode')
-
-
-        ,(46,'mean')
+        (46,'mean')
         ,(46,'mode')
 
         ,(30.1,'mode')
@@ -436,6 +430,11 @@ if __name__ == '__main__':
         ,(36.1,'min')
         ,(36.1,'mean')
         ,(36.1,'mode')
+
+        ,(46,'min')
+        ,(30.1,'mean')
+        ,(30.1,'min')
+        ,(18.1,'mode')
         ]:
 
         print('-'*120)
@@ -456,8 +455,8 @@ if __name__ == '__main__':
                 18.1:10+1
             }[theta_atual]-1
 
-        path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-        #path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+        #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+        path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
 
         if not os.path.exists(path):
             os.makedirs(path)
