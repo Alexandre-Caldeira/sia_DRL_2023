@@ -14,6 +14,9 @@ from operator import add
 from scipy import stats
 import statistics
 
+import warnings
+warnings.filterwarnings('ignore')
+
 class AgentClass():
     def __init__(self):
         self.Pos=[0,0,0,0,0,0,0]
@@ -186,10 +189,10 @@ class AgentClass():
             r3=Kgoal
 
         #4
-        # max_iterations 300 - 1200 (1min - 4) 
-        # media = 1500/2 = 750 iteracoes 
-        # 3min = colisao se -200 = 900*x
-        r4= -number_iterations*(2/9)
+        # max_iterations 100 - 300 (1min - 4)
+        # media = 1500/2 = 750 iteracoes
+        # 3min = colisao se -150 = 25*x
+        r4= -1.5*number_iterations
         #print(r1,r2,r3,r4)
 
         r5=0
@@ -200,7 +203,7 @@ class AgentClass():
         else:
             r5=10
 
-        r1 = 50*abs(np.linalg.norm([-4-self.goal[0],
+        r1 = 20*abs(np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])\
              - new_distance)/np.linalg.norm([-4-self.goal[0],
                              2-self.goal[1]])
@@ -209,7 +212,7 @@ class AgentClass():
         r3=0
         if new_distance<0.3:
             #close enough
-            reward=r1+r4+Kgoal
+            reward=Kgoal+r1
 
         return reward, new_distance, r1, r4
 

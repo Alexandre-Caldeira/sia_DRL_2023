@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings('ignore')
+
 import torch
 import numpy as np
 from torch import nn
@@ -142,9 +145,7 @@ def train(batch_size, current, target, optim, memory, gamma):
     loss.backward()
     optim.step()
 
-
-#TODO fix evaluation step
-def evaluate(Qmodel, horizon, repeats):
+def evaluate(Qmodel, horizon_eval, repeats):
     """
     Runs a greedy policy with respect to the current Q-Network for "repeats" many episodes. Returns the average
     episode reward.
@@ -177,15 +178,15 @@ def evaluate(Qmodel, horizon, repeats):
 
             state=Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
-            done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
+            done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon_eval, reach_dist=0.5)
 
-            if i > horizon:
+            if i > horizon_eval:
                 done = True
 
 
             perform += reward
     Qmodel.train()
-    return perform/repeats, new_distance, r1, r4 
+    return perform/repeats, new_distance, r1, r4
 
 
 def update_parameters(current_model, target_model):
@@ -194,7 +195,7 @@ def update_parameters(current_model, target_model):
 
 def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episodes=20, eps=1, eps_decay=0.995,
          eps_min=0.01, update_step=10, batch_size=64, update_repeats=50, num_episodes=3000, max_memory_size=50000,
-         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=200000,
+         lr_gamma=0.9, lr_step=100, measure_step=100, measure_repeats=100, hidden_dim=64, cnn=False, horizon=200000,horizon_eval=50,
          theta_atual:int= 36,laser_scan_state_type_atual:str = 'min',checkpoint_inter=1000):
     """
     :param gamma: reward discount factor
@@ -256,7 +257,8 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
     for episode in range(num_episodes):
         # display the performance
         if (episode % measure_step == 0) and episode >= min_episodes:
-            reward_eval, new_distance, r1, r4 = evaluate(Q_1, horizon, measure_repeats)
+            print('eval...')
+            reward_eval, new_distance, r1, r4 = evaluate(Q_1, horizon_eval, measure_repeats)
             performance.append([episode, reward_eval])
             print("Episode: ", episode)
             print("rewards: ", performance[-1][1])
@@ -298,6 +300,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
             done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
+  
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
             if i==1:
                 hist_dict['pos'][episode+1] = [Agent.Pos]
@@ -311,14 +314,20 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             if i > horizon:
                 done = True
 
-            if i%500==0:print('i: '+str(i)+' \tr:'+str([reward, new_distance, r1, r4]))
+            if (episode % (measure_step) == 0) and i%5==0:
+                if i<=5:
+                    str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
+                    print('Epsisode '+str(episode)+' @'+str_hora_agr)
+
+                str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
+                print('i: '+str(i)+' \tr:'+str([reward, new_distance, r1, r4]))
             # render the environment if render == True
             #if render and episode % render_step == 0:
             #    env.render()
 
             # save state, action, reward sequence
             memory.update(state, action, reward, done)
-        
+
 
         if episode >= min_episodes and episode % update_step == 0:
             for _ in range(update_repeats):
@@ -340,9 +349,9 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         if episode % checkpoint_inter ==0:
 
             str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
-            #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-            path ='./checkpoints/'+'wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-            
+            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            #path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+
             if not os.path.exists(path):
                 os.makedirs(path)
 
@@ -355,8 +364,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
                     #
                     # __builtins__, my_shelf, and imported modules can not be shelved.
                     #
-                    # print('ERROR shelving: {0}'.format(key))
-                    continue
+                    print('ERROR shelving: {0}'.format(key))
             my_shelf.close()
             print('checkpoint successfull @'+str_hora_agr)
 
@@ -399,67 +407,83 @@ if __name__ == '__main__':
     else:
         rospy.loginfo('States not received!!')
 
-    max_episodes=5000
+    max_episodes= 10000
     checkpoint_inter= 500
-    max_iterations = 1200
+    max_iterations = 60
     # action_time=0.2
     # memory_capacity=15000
 
-    for laser_scan_state_type_atual in ['mean', 'mode','min']:
-        for theta_atual in [36.1]:
-            print('-'*150)
-            print('''
-                Started training for:
-                  \tlaser_scan_state_type_atual = {laser_scan_state_type_atual}
-                  \ttheta_atual = {theta_atual}'
-            '''.format(laser_scan_state_type_atual=laser_scan_state_type_atual,theta_atual=theta_atual))
+    for theta_atual,laser_scan_state_type_atual in [
+        (46,'mean') 
+        ,(46,'min')
+        ,(46,'mode')
 
-            theta_atual = 46 # 46, 36.1, 30.1, 18.1
-            laser_scan_state_type_atual = 'mean' # min, mean, mode
+        ,(36.1,'mean')
+        ,(36.1,'min')
+        ,(36.1,'mode')
 
-            n_sectors ={
-                    46:4+1,
-                    36.1:5+1,
-                    30.1:6+1,
-                    18.1:10+1
-                }[theta_atual]-1
+        ,(30.1,'mean')
+        ,(30.1,'min')
+        ,(30.1,'mode')
 
-            #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-            path ='./checkpoints/'+'wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-            
-            if not os.path.exists(path):
-                os.makedirs(path)
+        ,(18.1,'mean')
+        ,(18.1,'min')
+        ,(18.1,'mode')]:
 
-            Q_1, performance = main(
-                state_space_size={
-                    46:4+1,
-                    36.1:5+1,
-                    30.1:6+1,
-                    18.1:10+1
-                }[theta_atual],
-                theta_atual = theta_atual,
-                laser_scan_state_type_atual = laser_scan_state_type_atual,
-                checkpoint_inter=checkpoint_inter,
-                horizon= max_iterations,
-                num_episodes=max_episodes, eps = 0.8, eps_decay=0.9995) #visualize eps decay=> geogebra 0.9995^(1000*x)
+        print('-'*120)
+        print('''
+            Started training for:
+                \tlaser_scan_state_type_atual = {laser_scan_state_type_atual}
+                \ttheta_atual = {theta_atual}'
+        '''.format(laser_scan_state_type_atual=laser_scan_state_type_atual,theta_atual=theta_atual))
 
+        theta_atual = theta_atual # 46, 36.1, 30.1, 18.1
+        laser_scan_state_type_atual = laser_scan_state_type_atual # min, mean, mode
 
+        n_sectors ={
+                46:4+1,
+                36.1:5+1,
+                30.1:6+1,
+                18.1:10+1
+            }[theta_atual]-1
 
+        path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+        #path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
 
-            str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
-            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-            if not os.path.exists(path):
-                os.makedirs(path)
+        Q_1, performance = main(
+            state_space_size={
+                46:4+1,
+                36.1:5+1,
+                30.1:6+1,
+                18.1:10+1
+            }[theta_atual],
+            theta_atual = theta_atual,
+            laser_scan_state_type_atual = laser_scan_state_type_atual,
+            checkpoint_inter=checkpoint_inter,
+            horizon= max_iterations,
+            measure_step=100,
+            measure_repeats= 10,
+            horizon_eval=25,
+            num_episodes=max_episodes, eps = 0.8, eps_decay=0.99975) #visualize eps decay=> geogebra 80*0.99975^(1000 x)
 
-            filename=path+'/wsh_'+str_hora_agr+'.out'
-            my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
-            for key in dir():
-                try:
-                    my_shelf[key] = globals()[key]
-                except TypeError:
-                    #
-                    # __builtins__, my_shelf, and imported modules can not be shelved.
-                    #
-                    print('ERROR shelving: {0}'.format(key))
-            my_shelf.close()
+        str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
+        path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+        #path = './checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+        
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        filename=path+'/wsh_'+str_hora_agr+'.out'
+        my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
+        for key in dir():
+            try:
+                my_shelf[key] = globals()[key]
+            except TypeError:
+                #
+                # __builtins__, my_shelf, and imported modules can not be shelved.
+                #
+                print('ERROR shelving: {0}'.format(key))
+        my_shelf.close()
