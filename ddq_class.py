@@ -145,7 +145,7 @@ def train(batch_size, current, target, optim, memory, gamma):
     loss.backward()
     optim.step()
 
-def evaluate(Qmodel, horizon_eval, repeats):
+def evaluate(Qmodel, horizon_eval, repeats,episode):
     """
     Runs a greedy policy with respect to the current Q-Network for "repeats" many episodes. Returns the average
     episode reward.
@@ -179,6 +179,12 @@ def evaluate(Qmodel, horizon_eval, repeats):
             state=Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
             done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon_eval, reach_dist=0.5)
+            
+            if i==1:
+                hist_dict['rewards'][episode+1] = [reward, new_distance, r1, r4]
+            else:
+                hist_dict['rewards'][episode+1][i].append([reward, new_distance, r1, r4])
+ 
 
             if i > horizon_eval:
                 done = True
@@ -258,7 +264,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         # display the performance
         if (episode % measure_step == 0) and episode >= min_episodes:
             print('eval...')
-            reward_eval, new_distance, r1, r4 = evaluate(Q_1, horizon_eval, measure_repeats)
+            reward_eval, new_distance, r1, r4 = evaluate(Q_1, horizon_eval, measure_repeats,episode)
             performance.append([episode, reward_eval])
             print("Episode: ", episode)
             print("rewards: ", performance[-1][1])
@@ -266,7 +272,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             print("eps: ", eps)
 
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
-            hist_dict['rewards'][episode+1] = [performance[-1][1], new_distance, r1, r4]
+            hist_dict['rewards_eval'][episode+1] = [performance[-1][1], new_distance, r1, r4]
             hist_dict['rates'][episode+1] = [eps, scheduler.get_lr()[0]]
             hist_dict['epresult'][episode+1] = [done, status_done]
 
@@ -446,7 +452,7 @@ if __name__ == '__main__':
 
         theta_atual = theta_atual # 46, 36.1, 30.1, 18.1
         laser_scan_state_type_atual = laser_scan_state_type_atual # min, mean, mode
-        hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
+        hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rewards_eval':{},'rates':{}, 'state':{}, 'epresult':{}}
 
         n_sectors ={
                 46:4+1,
