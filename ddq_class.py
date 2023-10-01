@@ -300,7 +300,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
             done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon, reach_dist=0.5)
 
-  
+
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
             if i==1:
                 hist_dict['pos'][episode+1] = [Agent.Pos]
@@ -359,6 +359,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
             for key in dir():
                 try:
+                    my_shelf['hist_dict'] = hist_dict
                     my_shelf[key] = globals()[key]
                 except:
                     #
@@ -389,7 +390,6 @@ if __name__ == '__main__':
     #Initialize relevant objects
     Agent=AgentClass()
     Com=CommunicationP3DX(Agent)
-    hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
 
     Agent.get_state_discrete()
     Agent.get_reward(1)
@@ -413,22 +413,30 @@ if __name__ == '__main__':
     # action_time=0.2
     # memory_capacity=15000
 
+    #[ (46,'mean'),(46,'min'),(46,'mode')
+     #   ,(36.1,'mean'),(36.1,'min'),(36.1,'mode')
+      #  ,(30.1,'mean'),(30.1,'min'),(30.1,'mode')
+       # ,(18.1,'mean'),(18.1,'min'),(18.1,'mode')]
+
     for theta_atual,laser_scan_state_type_atual in [
-        (46,'mean') 
-        ,(46,'min')
-        ,(46,'mode')
-
-        ,(36.1,'mean')
-        ,(36.1,'min')
-        ,(36.1,'mode')
-
+        (46,'min')
         ,(30.1,'mean')
         ,(30.1,'min')
+        ,(18.1,'mode')
+
+
+        ,(46,'mean')
+        ,(46,'mode')
+
         ,(30.1,'mode')
 
         ,(18.1,'mean')
         ,(18.1,'min')
-        ,(18.1,'mode')]:
+
+        ,(36.1,'min')
+        ,(36.1,'mean')
+        ,(36.1,'mode')
+        ]:
 
         print('-'*120)
         print('''
@@ -439,6 +447,7 @@ if __name__ == '__main__':
 
         theta_atual = theta_atual # 46, 36.1, 30.1, 18.1
         laser_scan_state_type_atual = laser_scan_state_type_atual # min, mean, mode
+        hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
 
         n_sectors ={
                 46:4+1,
@@ -472,7 +481,7 @@ if __name__ == '__main__':
         str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
         path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
         #path = './checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-        
+
         if not os.path.exists(path):
             os.makedirs(path)
 
