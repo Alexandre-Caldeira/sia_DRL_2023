@@ -178,15 +178,15 @@ def evaluate(Qmodel, horizon_eval, repeats,episode):
 
             state=Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
             reward, new_distance, r1, r4 = Agent.get_reward(number_iterations=i)
-            done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon_eval, reach_dist=0.5) 
+            done,status_done = Agent.is_done(number_iterations=i,max_iterations=horizon_eval, reach_dist=0.5)
 
             if i > horizon_eval:
                 done = True
 
-        if i==repeat_i:
-            hist_dict['rewards'][episode+1] = [reward, new_distance, r1, r4]
+        if repeat_i==0:
+            hist_dict['rewards'][episode+1] = [[reward, new_distance, r1, r4]]
         else:
-            hist_dict['rewards'][episode+1][repeat_i].append([reward, new_distance, r1, r4])
+            hist_dict['rewards'][episode+1].append([reward, new_distance, r1, r4])
 
 
             perform += reward
