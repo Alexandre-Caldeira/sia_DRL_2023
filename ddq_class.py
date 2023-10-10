@@ -363,16 +363,14 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
             filename=path+'/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino+'checkpointn_'+str(episode)+'.out'
             my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
-            for key in dir():
-                try:
-                    my_shelf['hist_dict'] = hist_dict
-                    my_shelf[key] = globals()[key]
-                except:
-                    #
-                    # __builtins__, my_shelf, and imported modules can not be shelved.
-                    #
-                    print('ERROR shelving: {0}'.format(key))
+
+            try:    my_shelf['hist_dict'] = hist_dict
+            except:
+                # __builtins__, my_shelf, and imported modules can not be shelved.
+                print('ERROR shelving: {0}'.format('hist_dict'))
+
             my_shelf.close()
+            
             print('checkpoint successfull @'+str_hora_agr)
 
 
@@ -424,9 +422,10 @@ if __name__ == '__main__':
        # ,(18.1,'mean'),(18.1,'min'),(18.1,'mode')]
 
     for theta_atual,laser_scan_state_type_atual in [
-        (46,'mean')
-        ,(30.1,'mean')
-        ,(36.1,'mean')
+        # (46,'mean')
+        # ,(30.1,'mean')
+        # ,
+        (36.1,'mean')
         ,(18.1,'mean')
 
         ,(46,'min')
@@ -471,7 +470,7 @@ if __name__ == '__main__':
             laser_scan_state_type_atual = laser_scan_state_type_atual,
 
             num_episodes=25000,
-            checkpoint_inter= 500, #checkpoint_inter,
+            checkpoint_inter= 5000, #checkpoint_inter,
             horizon= 60, #max_iterations,
             horizon_eval=30,
 
