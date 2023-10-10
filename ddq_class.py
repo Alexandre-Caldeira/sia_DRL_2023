@@ -168,7 +168,6 @@ def evaluate(Qmodel, horizon_eval, repeats,episode):
                 values = Qmodel(state)
             action = np.argmax(values.cpu().numpy())
 
-            #state, reward, done, _ = env.step(action)
             if action==0:
                 Com.action_forward()
             elif action==1:
@@ -185,8 +184,18 @@ def evaluate(Qmodel, horizon_eval, repeats,episode):
 
         if repeat_i==0:
             hist_dict['rewards'][episode+1] = [[reward, new_distance, r1, r4]]
+            hist_dict['epresult'][episode+1] = [done, status_done]
+
+            hist_dict['pos_eval'][episode+1] = [Agent.Pos]
+            hist_dict['scan_eval'][episode+1] = [Agent.laser_scan]
+            hist_dict['state_eval'][episode+1] = [state]
         else:
             hist_dict['rewards'][episode+1].append([reward, new_distance, r1, r4])
+            hist_dict['epresult'][episode+1].append([done, status_done])
+
+            hist_dict['pos_eval'][episode+1].append(Agent.Pos)
+            hist_dict['scan_eval'][episode+1].append(Agent.laser_scan)
+            hist_dict['state_eval'][episode+1].append(state)
 
 
             perform += reward
@@ -228,9 +237,6 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
     :param render_step: see above
     :return: the trained Q-Network and the measured performances
     """
-    #env = gym.make(env_name)
-    #torch.manual_seed(seed)
-    #env.seed(seed)
 
     if cnn:
         Q_1 = QNetworkCNN(action_dim=action_space_size).to(device)
@@ -273,7 +279,6 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             # hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rates':{}, 'state':{}, 'epresult':{}}
             hist_dict['rewards_eval'][episode+1] = [performance[-1][1], new_distance, r1, r4]
             hist_dict['rates'][episode+1] = [eps, scheduler.get_lr()[0]]
-            hist_dict['epresult'][episode+1] = [done, status_done]
 
         reset_simulation() #env.reset()
         Agent.get_state_discrete(laser_scan_state_type=laser_scan_state_type_atual, theta=theta_atual)
@@ -326,9 +331,6 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
 
                 str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
                 print('i: '+str(i)+' \tr:'+str([reward, new_distance, r1, r4]))
-            # render the environment if render == True
-            #if render and episode % render_step == 0:
-            #    env.render()
 
             # save state, action, reward sequence
             memory.update(state, action, reward, done)
@@ -354,13 +356,12 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         if episode % checkpoint_inter ==0:
 
             str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
-            #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-            path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
+            path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
 
             if not os.path.exists(path):
                 os.makedirs(path)
 
-            filename=path+'/wsh_'+str_hora_agr+'.out'
+            filename=path+'/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino+'checkpointn_'+str(episode)+'.out'
             my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
             for key in dir():
                 try:
@@ -412,9 +413,8 @@ if __name__ == '__main__':
     else:
         rospy.loginfo('States not received!!')
 
-    max_episodes= 10000
-    checkpoint_inter= 500
-    max_iterations = 60
+
+
     # action_time=0.2
     # memory_capacity=15000
 
@@ -425,20 +425,18 @@ if __name__ == '__main__':
 
     for theta_atual,laser_scan_state_type_atual in [
         (46,'mean')
-        ,(46,'mode')
-
-        ,(30.1,'mode')
-
-        ,(18.1,'mean')
-        ,(18.1,'min')
-
-        ,(36.1,'min')
+        ,(30.1,'mean')
         ,(36.1,'mean')
-        ,(36.1,'mode')
+        ,(18.1,'mean')
 
         ,(46,'min')
-        ,(30.1,'mean')
         ,(30.1,'min')
+        ,(36.1,'min')
+        ,(18.1,'min')
+
+        ,(46,'mode')
+        ,(30.1,'mode')
+        ,(36.1,'mode')
         ,(18.1,'mode')
         ]:
 
@@ -451,7 +449,9 @@ if __name__ == '__main__':
 
         theta_atual = theta_atual # 46, 36.1, 30.1, 18.1
         laser_scan_state_type_atual = laser_scan_state_type_atual # min, mean, mode
-        hist_dict = {'pos':{}, 'scan':{}, 'rewards':{}, 'rewards_eval':{},'rates':{}, 'state':{}, 'epresult':{}}
+        hist_dict = {'pos':{}, 'scan':{}, 'rewards':{},
+                     'pos_eval':{}, 'scan_eval':{}, 'state_eval':{},
+                      'rewards_eval':{},'rates':{}, 'state':{}, 'epresult':{}}
 
         n_sectors ={
                 46:4+1,
@@ -459,12 +459,6 @@ if __name__ == '__main__':
                 30.1:6+1,
                 18.1:10+1
             }[theta_atual]-1
-
-        #path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-        path ='./checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-
-        if not os.path.exists(path):
-            os.makedirs(path)
 
         Q_1, performance = main(
             state_space_size={
@@ -475,21 +469,28 @@ if __name__ == '__main__':
             }[theta_atual],
             theta_atual = theta_atual,
             laser_scan_state_type_atual = laser_scan_state_type_atual,
-            checkpoint_inter=checkpoint_inter,
-            horizon= max_iterations,
+
+            num_episodes=25000,
+            checkpoint_inter= 500, #checkpoint_inter,
+            horizon= 60, #max_iterations,
+            horizon_eval=30,
+
+            eps=0.8,
+            eps_decay=0.999945,  #visualize eps decay=> geogebra 80*0.999945^(1000 x)
+            eps_min= 0.20,
+
             measure_step=100,
-            measure_repeats= 10,
-            horizon_eval=25,
-            num_episodes=max_episodes, eps = 0.8, eps_decay=0.99975) #visualize eps decay=> geogebra 80*0.99975^(1000 x)
+            measure_repeats= 10
+            )
+
 
         str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
         path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
-        #path = './checkpoints/'+'kv_wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
 
         if not os.path.exists(path):
             os.makedirs(path)
 
-        filename=path+'/wsh_'+str_hora_agr+'.out'
+        filename=path+'/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'completo.out'
         my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
         for key in dir():
             try:
