@@ -353,7 +353,7 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
         eps = max(eps*eps_decay, eps_min)
 
         # checkpoints @ every 3k episodes
-        if episode % checkpoint_inter ==0:
+        if episode % checkpoint_inter ==0 and episode!=0:
 
             str_hora_agr = str(datetime.now()).replace(' ','_').replace(':','').replace('-','')[0:15]
             path = '/media/nero-ia/ADATA UFD/sim_data/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino
@@ -364,13 +364,15 @@ def main(state_space_size, action_space_size=3, gamma=0.99, lr=1e-3, min_episode
             filename=path+'/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'_'+str_hora_inicio_treino+'checkpointn_'+str(episode)+'.out'
             my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
 
-            try:    my_shelf['hist_dict'] = hist_dict
+            try:
+                my_shelf['hist_dict'] = hist_dict
+                my_shelf['Q_1'] = Q_1
             except:
                 # __builtins__, my_shelf, and imported modules can not be shelved.
                 print('ERROR shelving: {0}'.format('hist_dict'))
 
             my_shelf.close()
-            
+
             print('checkpoint successfull @'+str_hora_agr)
 
 
@@ -425,18 +427,31 @@ if __name__ == '__main__':
         # (46,'mean')
         # ,(30.1,'mean')
         # ,
-        (36.1,'mean')
-        ,(18.1,'mean')
+        # (36.1,'mean')
+        # ,(18.1,'mean')
 
-        ,(46,'min')
-        ,(30.1,'min')
-        ,(36.1,'min')
-        ,(18.1,'min')
+        # ,(46,'min')
+        # ,(30.1,'min')
+        # ,
+        # (36.1,'min')
+        # ,(18.1,'min')
 
-        ,(46,'mode')
-        ,(30.1,'mode')
-        ,(36.1,'mode')
-        ,(18.1,'mode')
+
+        # ,
+        #(30.1,'mode')
+
+        #,
+        #(18.1,'mode')
+
+        #,
+
+        #,
+        #(30.1,'min')
+        #,(46,'mode')
+        #,(36.1,'mode')
+
+        #,
+        (18.1,'mode')
         ]:
 
         print('-'*120)
@@ -488,6 +503,20 @@ if __name__ == '__main__':
 
         if not os.path.exists(path):
             os.makedirs(path)
+
+        filename=path+'/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'completo_histQ1.out'
+        my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
+
+        try:
+            my_shelf['hist_dict'] = hist_dict
+            my_shelf['Q_1'] = Q_1
+        except:
+            # __builtins__, my_shelf, and imported modules can not be shelved.
+            print('ERROR shelving: {0}'.format('hist_dict'))
+
+        my_shelf.close()
+
+        print('checkpoint completo successfull @'+str_hora_agr)
 
         filename=path+'/wsh_'+str(laser_scan_state_type_atual)+str(n_sectors)+'completo.out'
         my_shelf = shelve.open(filename,flag = 'n') # 'n' for new
