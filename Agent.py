@@ -24,7 +24,11 @@ class AgentClass():
         self.Vel=[]
         self.state=list(np.zeros(7))
         self.past_state=list(np.zeros(31))
-        self.goal=[-8,8] # Gambiarra, pq isso aqui fica bem estranho
+        #self.goal=[-8,8] # Gambiarra, pq isso aqui fica bem estranho
+        self.goal=[-2,8]
+        #self.goal=[8,-3]
+        #self.goal=[19.5,-2]
+
     def n_min(self,data,n=0.2):
         sorted=np.sort(data)
         index=int(len(data)*n)

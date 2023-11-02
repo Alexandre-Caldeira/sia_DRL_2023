@@ -95,7 +95,7 @@ class CommunicationP3DX():
             if connections > 0:
                 self.P3DX_state_publisher.publish(self.StateMsg)
                 rospy.logdebug("State changed")
-                rospy.sleep(0.2)
+                time.sleep(0.2)
                 break
             else:
                 self.rate.sleep()
